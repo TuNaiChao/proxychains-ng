@@ -1,2 +1,3 @@
+fix-CVE-2025-34451.patch
 0001-Use-proper-library-version-for-libproxychains.patch
 0002-Install-conffile-as-proxychains4.conf.patch

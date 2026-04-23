@@ -1,3 +1,11 @@
+proxychains-ng (4.15-1deepin1) unstable; urgency=medium
+
+  * Fix CVE-2025-34451: buffer overflow in config file parsing
+    - Backport upstream commit cc005b7 to fix potential buffer overflow
+      when using username or password exceeding 255 bytes for HTTP proxies.
+
+ -- Security Team <security@deepin.org>  Thu, 23 Apr 2026 21:30:00 +0800
+
 proxychains-ng (4.15-1) unstable; urgency=medium
 
   * New upstream release.

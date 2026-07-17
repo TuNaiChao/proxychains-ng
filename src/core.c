@@ -462,8 +462,10 @@ static int start_chain(int *fd, proxy_data * pd, char *begin_mark) {
 	error1:
 	proxychains_write_log(TP " timeout\n");
 	error:
-	if(*fd != -1)
+	if(*fd != -1) {
 		close(*fd);
+		*fd = -1;
+	}
 	return SOCKET_ERROR;
 }
 
@@ -520,9 +522,9 @@ static unsigned int calc_alive(proxy_data * pd, unsigned int proxy_count) {
 }
 
 
-static int chain_step(int ns, proxy_data * pfrom, proxy_data * pto) {
+static int chain_step(int *ns, proxy_data * pfrom, proxy_data * pto) {
 	int retcode = -1;
-	char *hostname;
+	char *hostname, *errmsg = 0;
 	char hostname_buf[MSG_LEN_MAX];
 	char ip_buf[INET6_ADDRSTRLEN];
 	int v6 = pto->ip.is_v6;
@@ -536,30 +538,33 @@ static int chain_step(int ns, proxy_data * pfrom, proxy_data * pto) {
 	usenumericip:
 		if(!inet_ntop(v6?AF_INET6:AF_INET,pto->ip.addr.v6,ip_buf,sizeof ip_buf)) {
 			pto->ps = DOWN_STATE;
-			proxychains_write_log("<--ip conversion error!\n");
-			close(ns);
-			return SOCKET_ERROR;
+			errmsg = "<--ip conversion error!\n";
+			retcode = SOCKET_ERROR;
+			goto err;
 		}
 		hostname = ip_buf;
 	}
 
 	proxychains_write_log(TP " %s:%d ", hostname, htons(pto->port));
-	retcode = tunnel_to(ns, pto->ip, pto->port, pfrom->pt, pfrom->user, pfrom->pass);
+	retcode = tunnel_to(*ns, pto->ip, pto->port, pfrom->pt, pfrom->user, pfrom->pass);
 	switch (retcode) {
 		case SUCCESS:
 			pto->ps = BUSY_STATE;
 			break;
 		case BLOCKED:
 			pto->ps = BLOCKED_STATE;
-			proxychains_write_log("<--denied\n");
-			close(ns);
-			break;
+			errmsg = "<--denied\n";
+			goto err;
 		case SOCKET_ERROR:
 			pto->ps = DOWN_STATE;
-			proxychains_write_log("<--socket error or timeout!\n");
-			close(ns);
-			break;
+			errmsg = "<--socket error or timeout!\n";
+			goto err;
 	}
+	return retcode;
+err:
+	if(errmsg) proxychains_write_log(errmsg);
+	if(*ns != -1) close(*ns);
+	*ns = -1;
 	return retcode;
 }
 
@@ -596,7 +601,7 @@ int connect_proxy_chain(int sock, ip_type target_ip,
 				p2 = select_proxy(FIFOLY, pd, proxy_count, &offset);
 				if(!p2)
 					break;
-				if(SUCCESS != chain_step(ns, p1, p2)) {
+				if(SUCCESS != chain_step(&ns, p1, p2)) {
 					PDEBUG("GOTO AGAIN 1\n");
 					goto again;
 				}
@@ -605,7 +610,7 @@ int connect_proxy_chain(int sock, ip_type target_ip,
 			//proxychains_write_log(TP);
 			p3->ip = target_ip;
 			p3->port = target_port;
-			if(SUCCESS != chain_step(ns, p1, p3))
+			if(SUCCESS != chain_step(&ns, p1, p3))
 				goto error;
 			break;
 
@@ -643,7 +648,7 @@ int connect_proxy_chain(int sock, ip_type target_ip,
 					/* Try from the beginning to where we started */
 					offset = 0;
 					continue;
-				} else if(SUCCESS != chain_step(ns, p1, p2)) {
+				} else if(SUCCESS != chain_step(&ns, p1, p2)) {
 					PDEBUG("GOTO AGAIN 1\n");
 					goto again;
 				} else
@@ -655,7 +660,7 @@ int connect_proxy_chain(int sock, ip_type target_ip,
 			p3->port = target_port;
 			proxychains_proxy_offset = offset+1;
 			PDEBUG("pd_offset = %d, curr_len = %d\n", proxychains_proxy_offset, curr_len);
-			if(SUCCESS != chain_step(ns, p1, p3))
+			if(SUCCESS != chain_step(&ns, p1, p3))
 				goto error;
 			break;
 
@@ -673,7 +678,7 @@ int connect_proxy_chain(int sock, ip_type target_ip,
 			while(offset < proxy_count) {
 				if(!(p2 = select_proxy(FIFOLY, pd, proxy_count, &offset)))
 					break;
-				if(SUCCESS != chain_step(ns, p1, p2)) {
+				if(SUCCESS != chain_step(&ns, p1, p2)) {
 					PDEBUG("chain_step failed\n");
 					goto error_strict;
 				}
@@ -682,7 +687,7 @@ int connect_proxy_chain(int sock, ip_type target_ip,
 			//proxychains_write_log(TP);
 			p3->ip = target_ip;
 			p3->port = target_port;
-			if(SUCCESS != chain_step(ns, p1, p3))
+			if(SUCCESS != chain_step(&ns, p1, p3))
 				goto error;
 			break;
 
@@ -698,7 +703,7 @@ int connect_proxy_chain(int sock, ip_type target_ip,
 			while(++curr_len < max_chain) {
 				if(!(p2 = select_proxy(RANDOMLY, pd, proxy_count, &offset)))
 					goto error_more;
-				if(SUCCESS != chain_step(ns, p1, p2)) {
+				if(SUCCESS != chain_step(&ns, p1, p2)) {
 					PDEBUG("GOTO AGAIN 2\n");
 					goto again;
 				}
@@ -707,7 +712,7 @@ int connect_proxy_chain(int sock, ip_type target_ip,
 			//proxychains_write_log(TP);
 			p3->ip = target_ip;
 			p3->port = target_port;
-			if(SUCCESS != chain_step(ns, p1, p3))
+			if(SUCCESS != chain_step(&ns, p1, p3))
 				goto error;
 
 	}
@@ -824,7 +829,8 @@ struct hostent* proxy_gethostbyname_old(const char *name)
 			close(pipe_fd[0]);
 got_buff:
 			l = strlen(buff);
-			if(l && buff[l-1] == '\n') buff[l-1] = 0;
+			if (!l) goto err_dns;
+			if (buff[l-1] == '\n') buff[l-1] = 0;
 			addr = inet_addr(buff);
 			if (addr == (in_addr_t) (-1))
 				goto err_dns;
@@ -839,8 +845,7 @@ got_buff:
 			name, inet_ntoa(*(struct in_addr*)&addr));
 	return &hostent_space;
 err_dns:
-	proxychains_write_log("|DNS-response|: %s does not exist\n", name);
-	perror("err_dns");
+	proxychains_write_log("|DNS-response|: %s lookup error\n", name);
 err:
 	return NULL;
 }
@@ -969,12 +974,13 @@ int proxy_getaddrinfo(const char *node, const char *service, const struct addrin
 		node?node:"",service?service:"",hints?(int)hints->ai_flags:0);
 
 	space = calloc(1, sizeof(struct addrinfo_data));
-	if(!space) goto err1;
+	if(!space) return EAI_MEMORY;
 
 	if(node && !my_inet_aton(node, space)) {
 		/* some folks (nmap) use getaddrinfo() with AI_NUMERICHOST to check whether a string
 		   containing a numeric ip was passed. we must return failure in that case. */
 		if(hints && (hints->ai_flags & AI_NUMERICHOST)) {
+err_nn:
 			free(space);
 			return EAI_NONAME;
 		}
@@ -987,7 +993,7 @@ int proxy_getaddrinfo(const char *node, const char *service, const struct addrin
 			memcpy(&((struct sockaddr_in *) &space->sockaddr_space)->sin_addr,
 			       *(hp->h_addr_list), sizeof(in_addr_t));
 		else
-			goto err2;
+			goto err_nn;
 	} else if(node) {
 		af = ((struct sockaddr_in *) &space->sockaddr_space)->sin_family;
 	} else if(!node && !(hints->ai_flags & AI_PASSIVE)) {
@@ -1018,18 +1024,13 @@ int proxy_getaddrinfo(const char *node, const char *service, const struct addrin
 		p->ai_socktype = hints->ai_socktype;
 		p->ai_flags = hints->ai_flags;
 		p->ai_protocol = hints->ai_protocol;
+		if(!p->ai_socktype && p->ai_protocol == IPPROTO_TCP)
+			p->ai_socktype = SOCK_STREAM;
 	} else {
 #ifndef AI_V4MAPPED
 #define AI_V4MAPPED 0
 #endif
 		p->ai_flags = (AI_V4MAPPED | AI_ADDRCONFIG);
 	}
-
-	goto out;
-	err2:
-	free(space);
-	err1:
-	return 1;
-	out:
 	return 0;
 }

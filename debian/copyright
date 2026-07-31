@@ -10,6 +10,7 @@ License:   GPL-2
 
 Files:     debian/*
 Copyright: 2017 Boyuan Yang <073plan@gmail.com>
+           2025 Thiago Andrade Marques <andrade@debian.org>
 License:   GPL-2+
 
 Files:     src/libproxychains.c src/core.*

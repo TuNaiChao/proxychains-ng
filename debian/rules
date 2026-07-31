@@ -5,9 +5,12 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 export DEB_CFLAGS_MAINT_APPEND  = -Wall -pedantic
 export DEB_LDFLAGS_MAINT_APPEND =
 
-export DPKG_EXPORT_BUILDFLAGS = 1
+# buildtools for cross-compilation: https://bugs.debian.org/1059721
+DPKG_EXPORT_BUILDFLAGS = 1
+DPKG_EXPORT_BUILDTOOLS = 1
 include /usr/share/dpkg/buildflags.mk
 include /usr/share/dpkg/default.mk
+include /usr/share/dpkg/buildtools.mk
 
 %:
 	dh $@

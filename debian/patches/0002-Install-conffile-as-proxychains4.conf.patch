@@ -19,10 +19,10 @@ will be installed as /etc/proxychains4.conf.
  3 files changed, 14 insertions(+)
 
 diff --git a/README b/README
-index f0383de..37b3769 100644
+index da413eb..2755a5d 100644
 --- a/README
 +++ b/README
-@@ -198,8 +198,10 @@ proxychains looks for config file in following order:
+@@ -216,8 +216,10 @@ proxychains looks for config file in following order:
  2)	./proxychains.conf
  3)	$(HOME)/.proxychains/proxychains.conf
  4)	$(sysconfdir)/proxychains.conf  **

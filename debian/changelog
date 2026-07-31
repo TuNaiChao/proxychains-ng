@@ -1,8 +1,65 @@
-proxychains-ng (4.15-1deepin1) unstable; urgency=medium
+proxychains-ng (4.17-3.1) unstable; urgency=medium
 
-  * fix(cve): CVE-2025-34451
+  * Non-maintainer upload.
+  * CVE-2025-34451: buffer overflow in config file parsing
+    (Closes: #1123676)
 
- -- deepin-ci-robot <packages@deepin.org>  Fri, 17 Jul 2026 00:27:48 +0800
+ -- Adrian Bunk <bunk@debian.org>  Thu, 07 May 2026 23:58:04 +0300
+
+proxychains-ng (4.17-3) unstable; urgency=medium
+
+  * New maintainer.(Closes: #1093571)
+  * Thanks to Boyuan Yang, the last maintainer.
+  * debian/control: added myself as a new maintainer.
+  * debian/copyright: added packaging rights for me.
+  * debian/watch: updated.
+
+ -- Thiago Andrade Marques <andrade@debian.org>  Mon, 20 Jan 2025 10:50:44 -0300
+
+proxychains-ng (4.17-2) unstable; urgency=medium
+
+  * QA upload.
+  * Orphan the package. (See #1093571)
+
+ -- Boyuan Yang <byang@debian.org>  Sun, 19 Jan 2025 18:55:02 -0500
+
+proxychains-ng (4.17-1) unstable; urgency=medium
+
+  * New upstream release.
+  * debian/patches/0003: Dropped, merged upstream.
+
+ -- Boyuan Yang <byang@debian.org>  Fri, 26 Jan 2024 09:59:04 -0500
+
+proxychains-ng (4.16-4) unstable; urgency=medium
+
+  [ Helmut Grohne ]
+  * debian/rules:
+    + Fix FTCBFS: Export CC for non-autoconf configure. (Closes: #1059721)
+
+ -- Boyuan Yang <byang@debian.org>  Tue, 02 Jan 2024 15:26:29 -0500
+
+proxychains-ng (4.16-3) unstable; urgency=medium
+
+  * debian/control: Bump Standards-Version to 4.6.2.
+  * debian/clean: Manually clean config.mak file generated during
+    build. (Closes: #1045246)
+
+ -- Boyuan Yang <byang@debian.org>  Sun, 13 Aug 2023 15:36:31 -0400
+
+proxychains-ng (4.16-2) unstable; urgency=medium
+
+  * debian/patches/0003-Add-hook-to-close_range: Backport patch
+    to fix compatibility with linux 5.9+ and glibc 2.34+ by hooking
+    close_range() function as well. (LP: #1974058)
+
+ -- Boyuan Yang <byang@debian.org>  Mon, 13 Jun 2022 14:08:52 -0400
+
+proxychains-ng (4.16-1) unstable; urgency=medium
+
+  [ Boyuan Yang ]
+  * New upstream release 4.16.
+
+ -- Boyuan Yang <byang@debian.org>  Sat, 29 Jan 2022 23:13:39 -0500
 
 proxychains-ng (4.15-1) unstable; urgency=medium
 

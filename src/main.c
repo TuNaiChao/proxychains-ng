@@ -135,16 +135,20 @@ int main(int argc, char *argv[]) {
 	if(!quiet)
 		fprintf(stderr, LOG_PREFIX "preloading %s/%s\n", prefix, dll_name);
 
+#if defined(IS_MAC) || defined(IS_OPENBSD)
+#define LD_PRELOAD_SEP ":"
+#else
+/* Dynlinkers for Linux and most BSDs seem to support space
+   as LD_PRELOAD separator, with colon added only recently.
+   We use the old syntax for maximum compat */
+#define LD_PRELOAD_SEP " "
+#endif
+
 #ifdef IS_MAC
 	putenv("DYLD_FORCE_FLAT_NAMESPACE=1");
 #define LD_PRELOAD_ENV "DYLD_INSERT_LIBRARIES"
-#define LD_PRELOAD_SEP ":"
 #else
 #define LD_PRELOAD_ENV "LD_PRELOAD"
-/* all historic implementations of BSD and linux dynlinkers seem to support
-   space as LD_PRELOAD separator, with colon added only recently.
-   we use the old syntax for maximum compat */
-#define LD_PRELOAD_SEP " "
 #endif
 	char *old_val = getenv(LD_PRELOAD_ENV);
 	snprintf(buf, sizeof(buf), LD_PRELOAD_ENV "=%s/%s%s%s",
@@ -154,7 +158,8 @@ int main(int argc, char *argv[]) {
 	         old_val ? old_val : "");
 	putenv(buf);
 	execvp(argv[start_argv], &argv[start_argv]);
-	perror("proxychains can't load process....");
+	fprintf(stderr, "proxychains: can't load process '%s'.", argv[start_argv]);
+	perror(" (hint: it's probably a typo)");
 
 	return EXIT_FAILURE;
 }
